@@ -106,16 +106,20 @@ def p_MTOV_RNS_ad(MTOV,RNS,ad):
     c1_17 = 1.48*m1_17/RNS              # primary compactness
     c2_17 = 1.48*m2_17/RNS              # secondary compactness
     mgw17 = 0.25*nu17*C17*m17           # mass in GW
-    md17 = xid*Mdisk_BNS_KF20(m2_17,c2_17) # disk mass (depends on RNS!)
-    me17 = Mdyn_BNS_KF20(m1_17,m2_17,c1_17,c2_17) # ejecta mass (depends on RNS!)
+    md17 = ad*Mdisk_BNS_KF20(m2_17,c2_17) # disk mass (depends on R_NS and alpha_d)
+    me17 = Mdyn_BNS_KF20(m1_17,m2_17,c1_17,c2_17) # ejecta mass (depends on R_NS)
     mrem_17 = m17-mgw17-md17-me17       # remnant mass
+    
+    # ensure that m_disk_GW170817>M_disk_min
+    mrem_17_good = mrem_17[md17>Mdmin]
+    c17good = np.linspace(0.,1.,len(mrem_17_good))
     
     # MTOV must be between the maximum pulsar mass and the GW170817 remnant mass divided by 1.2
     mtov = np.linspace(1.8,2.6,100)
     pmtov = np.interp(mtov,mpsr,cpsr)*(1.-np.interp(mtov,np.sort(mrem_17)/1.2,c17))
-    pMTOV = np.nan_to_num(np.interp(MTOV,mpsr,cpsr)*(1.-np.interp(MTOV,np.sort(mrem_17)/1.2,c17))/np.trapezoid(pmtov,mtov))
+    pMTOV = np.nan_to_num(np.interp(MTOV,mpsr,cpsr)*(1.-np.interp(MTOV,np.sort(mrem_17_good)/1.2,c17good))/np.trapezoid(pmtov,mtov))
         
-    return pMTOV 
+    return pMTOV
 
 if __name__=='__main__':
     
@@ -156,7 +160,7 @@ if __name__=='__main__':
                 hatMrem = hatMrem_NSBH_F18(m1[:,None],m2[None,:],C2[None,:],chi1[j])
                 MdNSBH = mb_from_m_and_C(m2[None,:],C2[None,:])*(bd[i]*hatMrem)
             
-                jet[i,j] = p_MTOV_RNS_xid(MTOV[i],RNS[i],ad[i])*(m1[:,None]>=m2[None,:])*np.where((m1[:,None]<=MTOV[i]),(MdBNS>Mdmin)[None,:]&(MremBNS>(1.2*MTOV[i])),(MdNSBH>Mdmin)&(m2[None,:]<MTOV[i]))
+                jet[i,j] = p_MTOV_RNS_ad(MTOV[i],RNS[i],ad[i])*(m1[:,None]>=m2[None,:])*np.where((m1[:,None]<=MTOV[i]),(MdBNS>Mdmin)[None,:]&(MremBNS>(1.2*MTOV[i])),(MdNSBH>Mdmin)&(m2[None,:]<MTOV[i]))
         
         
         pjet = np.mean(jet,axis=0)
@@ -171,7 +175,7 @@ if __name__=='__main__':
             
             plt.title(r'$\chi_1=%.1f$, $M_\mathrm{disk,min}=%.3f\,\mathrm{M_\odot}$'%(chi1[j],Mdmin))
             cs = plt.contour(m1,m2,pjet[j].T,levels=[0.01,0.25,0.5,0.75,0.99],linewidths=2.,vmax=1.02)
-            if j==2:
+            if j==2 and k==0:
                 plt.clabel(cs,fmt={0.01:r'$1\%$',0.25:r'$25\%$',0.5:r'$50\%$',0.75:r'$75\%$',0.99:r'$99\%$',},manual=[(7.1,1.9),(5.8,1.9),(6.8,1.68),(8.45,1.4),(6.1,1.6)])
         
             if k>0:
